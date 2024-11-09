@@ -1,5 +1,8 @@
 # AI Resume Helper
 
+# Project Structure
+
+```
 airesumebuilder/
 ├── .github/
 │   └── workflows/
@@ -24,4 +27,4 @@ airesumebuilder/
 ├── scripts/
 │   └── package_and_upload.sh        # Script to package and upload Lambda functions to S3
 └── README.md                        # Documentation for the overall project
-
+```
