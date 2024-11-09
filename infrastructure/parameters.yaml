@@ -1,0 +1,40 @@
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: "your-frontend-app-bucket-name" # REPLACE with the name of your S3 bucket for hosting the frontend.
+    Description: "S3 bucket name for hosting the frontend."
+
+  LambdaFunctionName:
+    Type: String
+    Default: "ResumeGeneratorLambda" # REPLACE with your desired name for the Lambda function.
+    Description: "Name for the main Lambda function."
+
+  DynamoDBTableName:
+    Type: String
+    Default: "UserProfiles" # REPLACE if you need a different name for the DynamoDB table.
+    Description: "DynamoDB table for storing user profiles and job applications."
+
+  ApiGatewayName:
+    Type: String
+    Default: "ResumeGeneratorAPI" # REPLACE with a preferred name for the API Gateway.
+    Description: "API Gateway for the Resume and Cover Letter Generator API."
+
+  RDSInstanceIdentifier:
+    Type: String
+    Default: "ResumeAppDB" # REPLACE with the identifier for your RDS database.
+    Description: "Identifier for the RDS database."
+
+  CodeBucket:
+    Type: String
+    Default: "your-code-bucket" # REPLACE with the name of your S3 bucket where Lambda code is stored.
+    Description: "S3 bucket where Lambda code is stored."
+
+  CodeKey:
+    Type: String
+    Default: "lambda-code.zip" # REPLACE if using a different name for the Lambda function zip file.
+    Description: "The key for the Lambda function code file in S3."
+
+  CloudFrontDistributionId:
+    Type: String
+    Default: "your-cloudfront-distribution-id" # REPLACE with your CloudFront distribution ID.
+    Description: "The CloudFront distribution ID for invalidating cache."

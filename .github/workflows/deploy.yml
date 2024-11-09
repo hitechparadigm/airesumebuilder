@@ -1,0 +1,58 @@
+name: Deploy Frontend and Backend to AWS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Deploy Frontend to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          npm install
+          npm run build
+          aws s3 sync build/ s3://your-frontend-app-bucket-name/ --delete # REPLACE 'your-frontend-app-bucket-name' with your actual S3 bucket name.
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='your-frontend-app-bucket-name.s3.amazonaws.com'].Id | [0]" --output text) # REPLACE 'your-frontend-app-bucket-name' with your S3 bucket name.
+          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+
+      - name: Deploy CloudFormation Backend Stack
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure.yaml \
+            --stack-name ResumeAppInfrastructureStack \
+            --parameter-overrides file://parameters.yaml \
+            --capabilities CAPABILITY_NAMED_IAM
+
+      - name: Update Lambda Function Code
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          for dir in ./lambda_functions/*; do
+              if [ -f "${dir}/function.zip" ]; then
+                  FUNCTION_NAME=$(basename "$dir") # REPLACE with the actual function names if they are different from directory names.
+                  aws lambda update-function-code \
+                      --function-name "$FUNCTION_NAME" \
+                      --zip-file fileb://"${dir}/function.zip"
+              fi
+          done
