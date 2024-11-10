@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "S3BucketName": "ai-resume-builder-frontend-unique678902",
+    "LambdaFunctionName": "AIResumeGeneratorLambda",
+    "DynamoDBTableName": "AIResumeBuilderUserProfiles",
+    "ApiGatewayName": "AIResumeGeneratorAPI",
+    "RDSInstanceIdentifier": "AIResumeAppDB",
+    "CodeBucket": "ai-resume-builder-app-lambda",
+    "CodeKey": "lambda-code.zip",
+    "CloudFrontDistributionId": "ai-resume-builder-cf-952214"
+  },
+  "Capabilities": ["CAPABILITY_NAMED_IAM"]
+}

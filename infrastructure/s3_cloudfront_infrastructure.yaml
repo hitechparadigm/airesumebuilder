@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Infrastructure for CloudFront to Serve an Existing S3 Bucket as a Static Website
+
+Parameters:
+  FrontendS3BucketName:
+    Type: String
+    Description: "Name of the existing S3 bucket for hosting the frontend."
+
+Resources:
+  # CloudFront Distribution to Serve the Existing S3 Bucket Content
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !Sub "${FrontendS3BucketName}.s3.amazonaws.com"
+            Id: WebsiteS3Origin
+            S3OriginConfig: {}
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: WebsiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        PriceClass: PriceClass_100
+
+Outputs:
+  CloudFrontDistributionDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: "The domain name of the CloudFront distribution for the website."

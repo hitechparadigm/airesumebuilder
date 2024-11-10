@@ -2,35 +2,63 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Backend Infrastructure for Resume Generator Application
 
 Parameters:
-  S3BucketName:
+  BackendS3BucketName:
     Type: String
+    Description: "Name of the S3 bucket for storing backend data."
+
   LambdaFunctionName:
     Type: String
+    Default: "AIResumeGeneratorLambda"
+    Description: "Name for the Lambda function to generate resumes."
+
   DynamoDBTableName:
     Type: String
+    Default: "AIResumeBuilderUserProfiles"
+    Description: "DynamoDB table for storing user profiles and job applications."
+
   ApiGatewayName:
     Type: String
+    Default: "AIResumeGeneratorAPI"
+    Description: "API Gateway for the Resume and Cover Letter Generator API."
+
   RDSInstanceIdentifier:
     Type: String
+    Default: "AIResumeAppDB"
+    Description: "Identifier for the RDS database."
+
   CodeBucket:
     Type: String
+    Default: "ai-resume-builder-app-lambda"
+    Description: "S3 bucket where Lambda function code is stored."
+
   CodeKey:
     Type: String
+    Default: "lambda-code.zip"
+    Description: "The key for the Lambda function code file in S3."
 
 Resources:
-  # S3 Bucket for storing user-uploaded resumes and generated documents
-  S3Bucket:
+  # S3 Bucket for Backend Data Storage
+  BackendDataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref S3BucketName # S3 bucket name provided in parameters.yaml.
+      BucketName: !Ref BackendS3BucketName
       VersioningConfiguration:
         Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Status: Enabled
+            ExpirationInDays: 365  # Optional: Adjust for your data retention needs
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
 
-  # DynamoDB Table for user profiles and job application history
+  # DynamoDB Table for User Profiles
   UserProfilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Ref DynamoDBTableName # DynamoDB table name provided in parameters.yaml.
+      TableName: !Ref DynamoDBTableName
       AttributeDefinitions:
         - AttributeName: UserId
           AttributeType: S
@@ -39,25 +67,25 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
-  # Lambda function to handle application logic
+  # Lambda function to handle resume generation
   ResumeGeneratorLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Ref LambdaFunctionName # Lambda function name provided in parameters.yaml.
+      FunctionName: !Ref LambdaFunctionName
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !Ref CodeBucket # Lambda code bucket provided in parameters.yaml.
-        S3Key: !Ref CodeKey       # Lambda code key (file name) provided in parameters.yaml.
+        S3Bucket: !Ref CodeBucket
+        S3Key: !Ref CodeKey
       Runtime: python3.8
       Timeout: 10
       MemorySize: 256
       Environment:
         Variables:
-          S3_BUCKET_NAME: !Ref S3BucketName
+          BACKEND_S3_BUCKET: !Ref BackendS3BucketName
           DYNAMO_TABLE_NAME: !Ref DynamoDBTableName
 
-  # Lambda Execution Role
+  # IAM Role for Lambda Execution
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -76,13 +104,17 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - s3:GetObject
                   - s3:PutObject
-                Resource: !Sub "arn:aws:s3:::${S3BucketName}/*"
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${BackendS3BucketName}"
+                  - !Sub "arn:aws:s3:::${BackendS3BucketName}/*"
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:UpdateItem
                 Resource: !GetAtt UserProfilesTable.Arn
               - Effect: Allow
                 Action:
@@ -95,15 +127,25 @@ Resources:
   ApiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: !Ref ApiGatewayName # API Gateway name provided in parameters.yaml.
+      Name: !Ref ApiGatewayName
+      Description: "API Gateway for Resume Generator Application"
+
+  # API Gateway deployment configuration
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: prod
 
 Outputs:
-  S3BucketName:
-    Description: "S3 bucket name for document storage"
-    Value: !Ref S3Bucket
+  BackendS3BucketName:
+    Description: "S3 bucket for backend data storage"
+    Value: !Ref BackendDataBucket
+
   DynamoDBTableName:
     Description: "DynamoDB table for user profiles"
     Value: !Ref UserProfilesTable
+
   ApiGatewayUrl:
     Description: "API Gateway URL for Resume Generator Application"
     Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
